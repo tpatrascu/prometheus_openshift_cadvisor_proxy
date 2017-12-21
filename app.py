@@ -28,12 +28,19 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             oauth_user = self.headers['x-forwarded-user']
             
             try:
-                response = urllib2.urlopen('{}://{}/federate?match[]={{job="{}"}}'.format(scheme, upstream, prometheus_scrape_job))
+                request_url = '{}://{}/federate?match[]={{job="{}"}}'.format(scheme, upstream, prometheus_scrape_job)
+                if debug:
+                    print('Requesting {}', request_url)
+                response = urllib2.urlopen(request_url)
                 prometheus_text_response = response.read()
 
+                if debug:
+                    print("Listing user projects")
                 oapi = client.OapiApi(client.ApiClient(header_name='Impersonate-User', header_value=oauth_user))
                 user_projects = [x.metadata.name for x in oapi.list_project().items]
 
+                if debug:
+                    print("Filtering and outputing metrics")
                 for family in text_string_to_metric_families(prometheus_text_response):
                     found_samples = []
                     for sample in family.samples:
