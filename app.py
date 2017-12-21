@@ -68,6 +68,7 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         self.send_header('Content-Type', 'text/plain; version=0.0.4')
         self.end_headers()
         self.wfile.write(body.encode())
+        if debug: print("End request")
 
 
 class MyServer(SocketServer.TCPServer):
