@@ -11,6 +11,20 @@ from openshift import client, config
 from prometheus_client.parser import text_string_to_metric_families
 
 
+metric_cache = {}
+
+def scrape_metrics():
+    request_url = '{}://{}/federate?match[]={{job="{}"}}'.format(scheme, upstream, prometheus_scrape_job)
+    if debug:
+        print('Requesting {}'.format(request_url))
+    response = urllib2.urlopen(request_url)
+    prometheus_text_response = response.read()
+
+    new_metrics = {}
+    for family in text_string_to_metric_families(prometheus_text_response):
+        for sample in family.samples:
+
+
 class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def log_request(self, code='-', size='-'):
         if debug:
@@ -28,12 +42,6 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             oauth_user = self.headers['x-forwarded-user']
             
             try:
-                request_url = '{}://{}/federate?match[]={{job="{}"}}'.format(scheme, upstream, prometheus_scrape_job)
-                if debug:
-                    print('Requesting {}', request_url)
-                response = urllib2.urlopen(request_url)
-                prometheus_text_response = response.read()
-
                 if debug:
                     print("Listing user projects")
                 oapi = client.OapiApi(client.ApiClient(header_name='Impersonate-User', header_value=oauth_user))
@@ -84,6 +92,7 @@ if __name__ == "__main__":
     upstream = os.environ.get('PROMETHEUS_UPSTREAM_TARGET', 'prometheus:9090')
     scheme = os.environ.get('PROMETHEUS_UPSTREAM_SCHEME', 'http')
     prometheus_scrape_job = os.environ.get('PROMETHEUS_SCRAPE_JOB', 'kubernetes-cadvisor')
+    scrape_freq_sec = os.environ.get('SCRAPE_FREQ_SEC', '60')
     
     debug = False
     if 'DEBUG' in os.environ and os.environ['DEBUG'] in ('True', '1'):
