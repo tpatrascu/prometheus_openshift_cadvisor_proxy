@@ -27,7 +27,7 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         if 'x-forwarded-user' in self.headers:
             oauth_user = self.headers['x-forwarded-user']
             
-            response = urllib2.urlopen(scheme + '://' + upstream + '/metrics')
+            response = urllib2.urlopen(scheme + '://' + upstream + '/federate?match[]={job="kubernetes-cadvisor"}')
             prometheus_text_response = response.read()
 
             oapi = client.OapiApi(client.ApiClient(header_name='Impersonate-User', header_value=oauth_user))
