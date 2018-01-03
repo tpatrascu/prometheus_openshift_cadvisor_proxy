@@ -1,17 +1,17 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 import os
 import math
-import urllib.request
-import http.server
-import socketserver
+import urllib2
+import SimpleHTTPServer
+import SocketServer
 
 from openshift import client, config
 from prometheus_client.parser import text_string_to_metric_families
 
 
-class Handler(http.server.SimpleHTTPRequestHandler):
+class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def log_request(self, code='-', size='-'):
         if debug:
             self.log_message('"%s" %s %s', self.requestline, str(code), str(size))
@@ -27,9 +27,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if 'x-forwarded-user' in self.headers:
             oauth_user = self.headers['x-forwarded-user']
             
-            with urllib.request.urlopen(scheme + '://' + upstream + '/metrics') as response:
-                prometheus_text_response = response.read().decode()
-        
+            response = urllib2.urlopen(scheme + '://' + upstream + '/metrics')
+            prometheus_text_response = response.read()
+
             oapi = client.OapiApi(client.ApiClient(header_name='Impersonate-User', header_value=oauth_user))
             user_projects = [x.metadata.name for x in oapi.list_project().items]
 
@@ -60,7 +60,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(body.encode())
 
 
-class MyServer(socketserver.TCPServer):
+class MyServer(SocketServer.TCPServer):
     allow_reuse_address = True
 
 
