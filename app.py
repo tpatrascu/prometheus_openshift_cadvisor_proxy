@@ -55,7 +55,7 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 if debug: raise
         else:
             response_code = 403
-            body = 'Authentication error.'
+            body = 'Authentication error.\n'
         
         self.send_response(response_code)
         self.send_header('Content-Type', 'text/plain; version=0.0.4')
