@@ -89,12 +89,10 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             
             for project in user_projects:
                 for metric_family_name, attrs  in metrics_cache[project].iteritems():
-                    print(metric_family_name)
-                    print(attrs)
-                    body += '# HELP {} {}\n'.format(metric_family_name, attrs.documentation)
-                    body += '# TYPE {} {}\n'.format(metric_family_name, attrs.type)
+                    body += '# HELP {} {}\n'.format(metric_family_name, attrs['documentation'])
+                    body += '# TYPE {} {}\n'.format(metric_family_name, attrs['type'])
                 
-                for sample in attrs.samples:
+                for sample in attrs['samples']:
                     sample_metric_name = sample[0]
                     sample_value = sample[2]
                     if isinstance(sample_value, float) and math.isnan(sample_value):
