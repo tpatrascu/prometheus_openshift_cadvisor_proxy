@@ -93,13 +93,13 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                         body += '# HELP {} {}\n'.format(metric_family_name, attrs['documentation'])
                         body += '# TYPE {} {}\n'.format(metric_family_name, attrs['type'])
                     
-                    for sample in attrs['samples']:
-                        sample_metric_name = sample[0]
-                        sample_value = sample[2]
-                        if isinstance(sample_value, float) and math.isnan(sample_value):
-                            sample_value = 'NaN'
-                        sample_prom_labels = ','.join(['{}="{}"'.format(x[0], x[1]) for x in sample[1].iteritems()])
-                        body += '{0} {{{1}}} {2}\n'.format(sample_metric_name, sample_prom_labels, sample_value)
+                        for sample in attrs['samples']:
+                            sample_metric_name = sample[0]
+                            sample_value = sample[2]
+                            if isinstance(sample_value, float) and math.isnan(sample_value):
+                                sample_value = 'NaN'
+                            sample_prom_labels = ','.join(['{}="{}"'.format(x[0], x[1]) for x in sample[1].iteritems()])
+                            body += '{0} {{{1}}} {2}\n'.format(sample_metric_name, sample_prom_labels, sample_value)
         else:
             response_code = 403
             body = 'Authentication error.\n'
