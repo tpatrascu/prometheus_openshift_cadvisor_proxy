@@ -18,7 +18,7 @@ metrics_cache = {}
 
 def scrape_metrics():
     global metrics_cache
-    
+
     while True:
         t0 = time.time()
         if debug:
@@ -86,12 +86,13 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             
             if debug:
                 print("Outputing metrics")
-                print(metrics_cache)
             
             for project in user_projects:
-                for name, attrs  in metrics_cache[project].iteritems():
-                    body += '# HELP {} {}\n'.format(name, attrs.documentation)
-                    body += '# TYPE {} {}\n'.format(name, attrs.type)
+                for metric_family_name, attrs  in metrics_cache[project].iteritems():
+                    print(metric_family_name)
+                    print(attrs)
+                    body += '# HELP {} {}\n'.format(metric_family_name, attrs.documentation)
+                    body += '# TYPE {} {}\n'.format(metric_family_name, attrs.type)
                 
                 for sample in attrs.samples:
                     sample_metric_name = sample[0]
