@@ -17,6 +17,8 @@ metrics_cache = {}
 
 
 def scrape_metrics():
+    global metrics_cache
+    
     while True:
         t0 = time.time()
         if debug:
