@@ -299,6 +299,15 @@ objects:
       spec:
         serviceAccountName: prom-cadvisor-proxy
         containers:
+        - image: 
+          imagePullPolicy: Always
+          name: prom-cadvisor-proxy
+          ports:
+          - containerPort: 8080
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
         - name: oauth-proxy
           image: ${IMAGE_PROXY}
           imagePullPolicy: IfNotPresent
@@ -321,15 +330,6 @@ objects:
             name: prometheus-tls
           - mountPath: /etc/proxy/secrets
             name: secrets
-        - image: 
-          imagePullPolicy: Always
-          name: prom-cadvisor-proxy
-          ports:
-          - containerPort: 8080
-            protocol: TCP
-          resources: {}
-          terminationMessagePath: /dev/termination-log
-          terminationMessagePolicy: File
         volumes:
         - name: secrets
           secret:

@@ -37,10 +37,9 @@ def scrape_metrics():
                     
                     if family.name not in new_metrics[sample[1]['namespace']]:
                         new_metrics[sample[1]['namespace']][family.name] = {
-                                'type': family.type,
-                                'documentation': family.documentation,
-                                'samples': [sample],
-                            }
+                            'type': family.type,
+                            'documentation': family.documentation,
+                            'samples': [sample],
                         }
                     else:
                         new_metrics[sample[1]['namespace']][family.name]['samples'].append(sample)
