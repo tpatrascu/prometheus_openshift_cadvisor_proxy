@@ -15,7 +15,6 @@ from prometheus_client.parser import text_string_to_metric_families
 
 metrics_cache = {}
 
-
 def scrape_metrics():
     global metrics_cache
 
@@ -24,33 +23,32 @@ def scrape_metrics():
         if debug:
             print('Start scraping {}'.format(request_url))
         
-        prometheus_text_response = ''
         try:
             prometheus_text_response = urllib2.urlopen(request_url).read()
+
+            new_metrics = {}
+            for family in text_string_to_metric_families(prometheus_text_response):
+                for sample in family.samples:
+                    if 'namespace' in sample[1]:
+                        if sample[1]['namespace'] not in new_metrics:
+                            new_metrics[sample[1]['namespace']] = {}
+                        
+                        if family.name not in new_metrics[sample[1]['namespace']]:
+                            new_metrics[sample[1]['namespace']][family.name] = {
+                                'type': family.type,
+                                'documentation': family.documentation,
+                                'samples': [sample],
+                            }
+                        else:
+                            new_metrics[sample[1]['namespace']][family.name]['samples'].append(sample)
         except Exception as e:
             if debug: print(e)
-
-        new_metrics = {}
-        for family in text_string_to_metric_families(prometheus_text_response):
-            for sample in family.samples:
-                if 'namespace' in sample[1]:
-                    if sample[1]['namespace'] not in new_metrics:
-                        new_metrics[sample[1]['namespace']] = {}
-                    
-                    if family.name not in new_metrics[sample[1]['namespace']]:
-                        new_metrics[sample[1]['namespace']][family.name] = {
-                            'type': family.type,
-                            'documentation': family.documentation,
-                            'samples': [sample],
-                        }
-                    else:
-                        new_metrics[sample[1]['namespace']][family.name]['samples'].append(sample)
-    
+        
         metrics_cache = new_metrics
 
         t1 = time.time()
         total_time = t1 - t0
-
+        
         if debug:
             print('End scraping. duration: {} seconds'.format(total_time))
         
