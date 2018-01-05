@@ -84,6 +84,7 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             
             if debug:
                 print("Outputing metrics")
+                print(metrics_cache)
             
             for project in user_projects:
                 for name, attrs  in metrics_cache[project].iteritems():
@@ -132,6 +133,7 @@ if __name__ == "__main__":
     thread = threading.Thread(target=scrape_metrics)
     thread.daemon = True
     thread.start()
+    time.sleep(2)
 
     print('Server listening on port 8080...')
     print('Debug', debug)
