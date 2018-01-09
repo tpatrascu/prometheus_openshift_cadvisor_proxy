@@ -4,14 +4,13 @@
 import os
 import math
 import urllib2
-import SimpleHTTPServer
-import SocketServer
+from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
+from SocketServer import ThreadingMixIn
 
 from openshift import client, config
-from prometheus_client.parser import text_string_to_metric_families
 
 
-class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+class Handler(BaseHTTPRequestHandler):
     def log_request(self, code='-', size='-'):
         if debug:
             self.log_message('"%s" %s %s', self.requestline, str(code), str(size))
@@ -34,6 +33,7 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 user_projects = [x.metadata.name for x in oapi.list_project().items]
             except:
                 response_code = 500
+                user_projects = []
                 body = 'Failed to list user projects.\n'
             
             if debug:
@@ -58,9 +58,8 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         self.wfile.write(body.encode())
         if debug: print("End request")
 
-
-class MyServer(SocketServer.TCPServer):
-    allow_reuse_address = True
+class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
+    """Handle requests in a separate thread."""
 
 
 if __name__ == "__main__":
@@ -79,5 +78,5 @@ if __name__ == "__main__":
 
     print('Server listening on port 8080...')
     print('Debug', debug)
-    httpd = MyServer(('', 8080), Handler)
+    httpd = ThreadedHTTPServer(('', 8080), Handler)
     httpd.serve_forever()
