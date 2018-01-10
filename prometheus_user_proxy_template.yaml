@@ -1,0 +1,239 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: prometheus-user-proxy
+  annotations:
+    "openshift.io/display-name": Prometheus user proxy
+    description: Prometheus user proxy
+    iconClass: icon-cogs
+    tags: "monitoring,prometheus,time-series"
+parameters:
+- description: The namespace to instantiate prometheus user proxy under. Defaults to 'prometheus'.
+  name: NAMESPACE
+  value: prometheus
+- description: The location of the proxy image
+  name: IMAGE_PROXY
+  value: openshift/oauth-proxy:v1.0.0
+- description: The location of prometheus_openshift_user_proxy git repo
+  name: REPO_PROM_USER_PROXY
+  value: https://github.com/tpatrascu/prometheus_openshift_user_proxy.git
+- description: OpenShift cadvisor metrics path
+  name: CADVISOR_METRICS_PATH
+  value: /metrics/cadvisor
+- description: The session secret for the proxy
+  name: SESSION_SECRET
+  generate: expression
+  from: "[a-zA-Z0-9]{43}"
+
+objects:
+- apiVersion: v1
+  kind: ServiceAccount
+  metadata:
+    name: prom-user-proxy
+    namespace: "${NAMESPACE}"
+    labels:
+      app: prom-user-proxy
+    annotations:
+      serviceaccounts.openshift.io/oauth-redirectreference.primary: '{"kind":"OAuthRedirectReference","apiVersion":"v1","reference":{"kind":"Route","name":"prom-user-proxy"}}'
+- apiVersion: v1
+  kind: ClusterRoleBinding
+  metadata:
+    name: prom-user-proxy-cluster-admin
+    labels:
+      app: prom-user-proxy
+  roleRef:
+    name: cluster-admin
+  subjects:
+  - kind: ServiceAccount
+    name: prom-user-proxy
+    namespace: "${NAMESPACE}"
+- apiVersion: v1
+  kind: Secret
+  metadata:
+    name: prometheus-proxy
+    namespace: "${NAMESPACE}"
+  stringData:
+    session_secret: "${SESSION_SECRET}="
+
+- apiVersion: v1
+  kind: Service
+  metadata:
+    annotations:
+      service.alpha.openshift.io/serving-cert-secret-name: prom-user-proxy-tls
+    creationTimestamp: null
+    labels:
+      app: prom-user-proxy
+    name: prom-user-proxy
+    namespace: "${NAMESPACE}"
+  spec:
+    ports:
+    - name: 9090-tcp
+      port: 9090
+      protocol: TCP
+      targetPort: 9090
+    selector:
+      deploymentconfig: prom-user-proxy
+    sessionAffinity: None
+    type: ClusterIP
+
+- apiVersion: v1
+  kind: BuildConfig
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftWebConsole
+    creationTimestamp: null
+    labels:
+      app: prom-user-proxy
+    name: prom-user-proxy
+    namespace: "${NAMESPACE}"
+  spec:
+    nodeSelector: null
+    output:
+      to:
+        kind: ImageStreamTag
+        name: prom-user-proxy:latest
+    postCommit: {}
+    resources: {}
+    runPolicy: Serial
+    source:
+      git:
+        ref: master
+        uri: ${REPO_PROM_USER_PROXY}
+      type: Git
+    strategy:
+      sourceStrategy:
+        from:
+          kind: ImageStreamTag
+          name: python:2.7
+          namespace: openshift
+      type: Source
+    triggers:
+    - github:
+        secret: 6385eab1016b4a40
+      type: GitHub
+    - generic:
+        secret: c18c4ab17227b896
+      type: Generic
+    - imageChange: {}
+      type: ImageChange
+    - type: ConfigChange
+- apiVersion: v1
+  kind: ImageStream
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftWebConsole
+    creationTimestamp: null
+    generation: 1
+    labels:
+      app: prom-user-proxy
+    name: prom-user-proxy
+    namespace: "${NAMESPACE}"
+
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftWebConsole
+    creationTimestamp: null
+    generation: 1
+    labels:
+      app: prom-user-proxy
+    name: prom-user-proxy
+    namespace: "${NAMESPACE}"
+  spec:
+    replicas: 1
+    selector:
+      deploymentconfig: prom-user-proxy
+    strategy:
+      activeDeadlineSeconds: 21600
+      resources: {}
+      rollingParams:
+        intervalSeconds: 1
+        maxSurge: 25%
+        maxUnavailable: 25%
+        timeoutSeconds: 600
+        updatePeriodSeconds: 1
+      type: Rolling
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          app: prom-user-proxy
+          deploymentconfig: prom-user-proxy
+      spec:
+        serviceAccountName: prom-user-proxy
+        containers:
+        - image: 
+          imagePullPolicy: Always
+          name: prom-user-proxy
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+        - name: oauth-proxy
+          image: ${IMAGE_PROXY}
+          imagePullPolicy: IfNotPresent
+          ports:
+          - containerPort: 9090
+            name: web
+          args:
+          - -provider=openshift
+          - -https-address=:9090
+          - -email-domain=*
+          - -upstream=http://localhost:8080
+          - -client-id=system:serviceaccount:${NAMESPACE}:prom-user-proxy
+          - -tls-cert=/etc/tls/private/tls.crt
+          - -tls-key=/etc/tls/private/tls.key
+          - -client-secret-file=/var/run/secrets/kubernetes.io/serviceaccount/token
+          - -cookie-secret-file=/etc/proxy/secrets/session_secret
+          - '-openshift-delegate-urls={"/": {"resource": "projects", "verb": "list"}}'
+          volumeMounts:
+          - mountPath: /etc/tls/private
+            name: prom-user-proxy-tls
+          - mountPath: /etc/proxy/secrets
+            name: secrets
+        volumes:
+        - name: secrets
+          secret:
+            secretName: prometheus-proxy
+        - name: prom-user-proxy-tls
+          secret:
+            secretName: prom-user-proxy-tls
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+    test: false
+    triggers:
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - prom-user-proxy
+        from:
+          kind: ImageStreamTag
+          name: prom-user-proxy:latest
+          namespace: ${NAMESPACE}
+      type: ImageChange
+    - type: ConfigChange
+
+
+
+- apiVersion: v1
+  kind: Route
+  metadata:
+    annotations:
+      openshift.io/generated-by: OpenShiftWebConsole
+      openshift.io/host.generated: "true"
+    creationTimestamp: null
+    labels:
+      app: prom-user-proxy
+    name: prom-user-proxy
+    namespace: "${NAMESPACE}"
+  spec:
+    port:
+      targetPort: 9090-tcp
+    to:
+      kind: Service
+      name: prom-user-proxy
+      weight: 100
+    tls:
+      termination: Reencrypt
